@@ -10,8 +10,9 @@ func main() {
 	// http.HandleFunc("/getUsers/", getUsers)
 	// http.HandleFunc("/createUsers/", createUser)
 	// log.Fatal(http.ListenAndServe(":8080", nil))
+	// modals.ConnectMongoDB()
+	// modals.AddUsers("enes","35789654")
 	modals.ConnectMongoDB()
-	modals.AddUsers("enes","35789654")
 
 }
 
