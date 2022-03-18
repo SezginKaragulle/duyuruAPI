@@ -44,7 +44,7 @@ func UsersList() {
 	users := client.Database("duyuruDB").Collection("users")
 	cur, err := users.Find(ctx, bson.D{})
 	if err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 	defer cur.Close(ctx)
 	var myUserList []Users
@@ -52,12 +52,12 @@ func UsersList() {
 		var result Users
 		err := cur.Decode(&result)
 		if err != nil {
-			log.Fatal("Hata : " + err.Error())
+			log.Fatal("Error : " + err.Error())
 		}
 		myUserList = append(myUserList, result)
 	}
 	if err := cur.Err(); err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 	fmt.Println(myUserList)
 }
@@ -67,7 +67,7 @@ func UsersAdd(userName string, password string) {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
 	if err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 	users := client.Database("duyuruDB").Collection("users")
 	newUser := Users{
@@ -76,7 +76,7 @@ func UsersAdd(userName string, password string) {
 	}
 	res, err := users.InsertOne(context.TODO(), newUser)
 	if err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 
 	id := res.InsertedID
@@ -117,13 +117,13 @@ func UsersUpdate(_userName string, _password string, _newUserName string, _newPa
 	var myFilter bson.M
 	bytes, err := bson.Marshal(changingUser)
 	if err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 	bson.Unmarshal(bytes, &myFilter)
 	var usr bson.M
 	bytes, err = bson.Marshal(newUserUpdate)
 	if err != nil {
-		log.Fatal("Hata : " + err.Error())
+		log.Fatal("Error : " + err.Error())
 	}
 	bson.Unmarshal(bytes, &usr)
 	update := bson.D{
