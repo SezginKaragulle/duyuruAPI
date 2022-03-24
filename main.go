@@ -1,29 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"golesson/modals"
+	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
-	// http.HandleFunc("/getUsers/", getUsers)
-	// http.HandleFunc("/createUsers/", createUser)
-	// log.Fatal(http.ListenAndServe(":8080", nil))
-	// modals.ConnectMongoDB()
-	// modals.AddUsers("enes","35789654")
-	modals.ConnectMongoDB()
 
-}
+	r := mux.NewRouter()
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World %s!", r.URL.Path[1:])
-}
+	r.HandleFunc("/api/users", modals.GetUsers).Methods("GET")
+	r.HandleFunc("/api/users/{id}", modals.GetUserSearch).Methods("GET")
+	r.HandleFunc("/api/users/createUser", modals.CreateUser).Methods("POST")
+	r.HandleFunc("/api/users/update/{id}", modals.UpdateUser).Methods("PUT")
+	r.HandleFunc("/api/users/delete/{id}", modals.DeleteUser).Methods("DELETE")
 
-func createUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Created User", r.URL.Path[1:])
-}
+	log.Fatal(http.ListenAndServe(":8000", r))
 
-func getUsers(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "getUsers", r.URL.Path[1:])
 }

@@ -5,148 +5,150 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
+	"net/http"
 
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Users struct {
-	UserName string
-	Password string
+	ID       primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	UserName string             `json:"username,omitempty" bson:"username,omitempty"`
+	Password string             `json:"password" bson:"password,omitempty"`
 }
 
-const databaseURL = "mongodb+srv://solmaz:tlV37y9TbAxxGXlF@cluster0.iup4a.mongodb.net/duyuruDB?retryWrites=true&w=majority"
+const databaseURL = "mongodb+srv://solmaz:OmdYWoX8myGOcvEL@cluster0.iup4a.mongodb.net/duyuruDB?retryWrites=true&w=majority"
 
-//MongoDB bağlantısını test amaçlı fonksiyondur.
-func ConnectMongoDB() {
+var collection = ConnectDB()
+
+func ConnectDB() *mongo.Collection {
+
 	clientOptions := options.Client().ApplyURI(databaseURL)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = client.Ping(context.TODO(), nil)
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Connected to MongoDB!")
+
+	collection := client.Database("duyuruDB").Collection("users")
+
+	return collection
 }
 
-//users collectionundaki verileri çekmek için çalışan bir fonksiyondur.
-func UsersList() {
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
-	users := client.Database("duyuruDB").Collection("users")
-	cur, err := users.Find(ctx, bson.D{})
+func GetUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var myUsers []Users
+
+	cur, err := collection.Find(context.TODO(), bson.M{})
+
 	if err != nil {
-		log.Fatal("Error : " + err.Error())
+		log.Fatal(err)
+		return
 	}
-	defer cur.Close(ctx)
-	var myUserList []Users
-	for cur.Next(ctx) {
-		var result Users
-		err := cur.Decode(&result)
+
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+
+		var myUser Users
+		err := cur.Decode(&myUser)
 		if err != nil {
-			log.Fatal("Error : " + err.Error())
+			log.Fatal(err)
 		}
-		myUserList = append(myUserList, result)
+		myUsers = append(myUsers, myUser)
 	}
+
 	if err := cur.Err(); err != nil {
-		log.Fatal("Error : " + err.Error())
+		log.Fatal(err)
 	}
-	fmt.Println(myUserList)
+
+	json.NewEncoder(w).Encode(myUsers)
 }
 
-//Users collectiona kullanıcı ekleme için çalışan bir fonksiyondur.
-func UsersAdd(userName string, password string) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
+func GetUserSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var user Users
+	var params = mux.Vars(r)
+
+	myID, _ := primitive.ObjectIDFromHex(params["id"])
+
+	filter := bson.M{"_id": myID}
+	err := collection.FindOne(context.TODO(), filter).Decode(&user)
 	if err != nil {
-		log.Fatal("Error : " + err.Error())
+		log.Fatal(err)
+		return
 	}
-	users := client.Database("duyuruDB").Collection("users")
+
+	json.NewEncoder(w).Encode(user)
+}
+
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	//var user Users
 	newUser := Users{
-		UserName: userName,
-		Password: password,
+		UserName: "test",
+		Password: "Test",
 	}
-	res, err := users.InsertOne(context.TODO(), newUser)
+	_ = json.NewDecoder(r.Body).Decode(&newUser)
+
+	result, err := collection.InsertOne(context.TODO(), newUser)
 	if err != nil {
-		log.Fatal("Error : " + err.Error())
+		log.Fatal(err)
+		return
 	}
 
-	id := res.InsertedID
-	fmt.Println("User Added... ", id)
+	json.NewEncoder(w).Encode(result)
 }
 
-//MongoDB ' de users collection içerisinde userName ile aratmak için çalışan bir fonksiyondur.
-func UsersSearch(userName string) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
-	users := client.Database("duyuruDB").Collection("users")
-	var result Users
-	err = users.FindOne(ctx, bson.M{"username": userName}).Decode(&result)
-	if err != nil {
-		log.Fatal("Error : " + err.Error())
-	}
-	out, err := json.Marshal(&result)
-	if err != nil {
-		log.Fatal("Error : " + err.Error())
-	}
-	fmt.Println(string(out))
-}
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
-//Users collection içerisinde kullanıcı güncelleme işlemi için çalışan bir fonksiyon.
-func UsersUpdate(_userName string, _password string, _newUserName string, _newPassWord string) {
+	w.Header().Set("Content-Type", "application/json")
 
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
-	users := client.Database("duyuruDB").Collection("users")
-	changingUser := Users{
-		UserName: _userName,
-		Password: _password,
-	}
-	newUserUpdate := Users{
-		UserName: _newUserName,
-		Password: _newPassWord,
-	}
-	var myFilter bson.M
-	bytes, err := bson.Marshal(changingUser)
-	if err != nil {
-		log.Fatal("Error : " + err.Error())
-	}
-	bson.Unmarshal(bytes, &myFilter)
-	var usr bson.M
-	bytes, err = bson.Marshal(newUserUpdate)
-	if err != nil {
-		log.Fatal("Error : " + err.Error())
-	}
-	bson.Unmarshal(bytes, &usr)
+	var params = mux.Vars(r)
+
+	//Get id from parameters
+	id, _ := primitive.ObjectIDFromHex(params["id"])
+	var user Users
+
+	filter := bson.M{"_id": id}
+	_ = json.NewDecoder(r.Body).Decode(&user)
+
 	update := bson.D{
-		{"$set", usr},
-	}
-	ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
-	_, err = users.UpdateOne(ctx, myFilter, update)
-	if err != nil {
-		log.Fatal("Error : " + err.Error())
+		{"$set", bson.D{
+			{"username", "test1"},
+			{"password", "test2"},
+		}},
 	}
 
-	fmt.Println("User Updated...")
+	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	user.ID = id
+
+	json.NewEncoder(w).Encode(user)
 
 }
 
-//Users collection içerisinde kullanıcı silme işlemi için çalışan bir fonksiyon.
-func UsersDelete(_userName string) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(databaseURL))
-	users := client.Database("duyuruDB").Collection("users")
-	_, err = users.DeleteOne(ctx, bson.D{{"username", _userName}})
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var params = mux.Vars(r)
+	id, err := primitive.ObjectIDFromHex(params["id"])
+	filter := bson.M{"_id": id}
+
+	deleteResult, err := collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
-		log.Fatal("Error : " + err.Error())
+		log.Fatal(err)
+		return
 	}
-	fmt.Println("User Deleted...")
+
+	json.NewEncoder(w).Encode(deleteResult)
 }
