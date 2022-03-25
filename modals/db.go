@@ -90,10 +90,12 @@ func GetUserSearch(w http.ResponseWriter, r *http.Request) {
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	//var user Users
+	var params = mux.Vars(r)
+	myUserName, _ := params["username"]
+	myPassword, _ := params["password"]
 	newUser := Users{
-		UserName: "test",
-		Password: "Test",
+		UserName: myUserName,
+		Password: myPassword,
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newUser)
 
@@ -114,6 +116,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	//Get id from parameters
 	id, _ := primitive.ObjectIDFromHex(params["id"])
+	myUserName, _ := (params["username"])
+	myPassword, _ := (params["password"])
 	var user Users
 
 	filter := bson.M{"_id": id}
@@ -121,8 +125,8 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	update := bson.D{
 		{"$set", bson.D{
-			{"username", "test1"},
-			{"password", "test2"},
+			{"username", myUserName},
+			{"password", myPassword},
 		}},
 	}
 
@@ -151,4 +155,23 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(deleteResult)
+}
+
+func GetUserSearch2(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var user Users
+	var params = mux.Vars(r)
+
+	myUserName, _ := params["username"]
+	myPassword, _ := params["password"]
+
+	filter := bson.M{"username": myUserName, "password": myPassword}
+	err := collection.FindOne(context.TODO(), filter).Decode(&user)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
 }
