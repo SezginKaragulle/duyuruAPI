@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,16 +16,19 @@ import (
 )
 
 type Users struct {
-	ID       primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	UserName string             `json:"username,omitempty" bson:"username,omitempty"`
-	Password string             `json:"password" bson:"password,omitempty"`
+	ID         int64  `json:"_id,omitempty" bson:"_id,omitempty"`
+	UserName   string `json:"username,omitempty" bson:"username,omitempty"`
+	Password   string `json:"password" bson:"password,omitempty"`
+	FullName   string `json:"fullname" bson:"fullname,omitempty"`
+	Department string `json:"department" bson:"department,omitempty"`
+	PhotoURl   string `json:"photourl" bson:"photourl,omitempty"`
 }
 
 const databaseURL = "mongodb+srv://solmaz:OmdYWoX8myGOcvEL@cluster0.iup4a.mongodb.net/duyuruDB?retryWrites=true&w=majority"
 
-var collection = ConnectDB()
+//var collection = ConnectDB("users")
 
-func ConnectDB() *mongo.Collection {
+func ConnectDB(collection_name string) *mongo.Collection {
 
 	clientOptions := options.Client().ApplyURI(databaseURL)
 	client, err := mongo.Connect(context.TODO(), clientOptions)
@@ -34,13 +38,14 @@ func ConnectDB() *mongo.Collection {
 
 	fmt.Println("Connected to MongoDB!")
 
-	collection := client.Database("duyuruDB").Collection("users")
+	collection := client.Database("duyuruDB").Collection(collection_name)
 
 	return collection
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	var collection = ConnectDB("users")
 	var myUsers []Users
 
 	cur, err := collection.Find(context.TODO(), bson.M{})
@@ -72,6 +77,7 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 func GetUserSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	var collection = ConnectDB("users")
 	var user Users
 	var params = mux.Vars(r)
 
@@ -90,12 +96,22 @@ func GetUserSearch(w http.ResponseWriter, r *http.Request) {
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	var collection = ConnectDB("users")
 	var params = mux.Vars(r)
+
+	myID, _ := strconv.Atoi(params["id"])
 	myUserName, _ := params["username"]
 	myPassword, _ := params["password"]
+	myFullName, _ := params["fullname"]
+	myDepartment, _ := params["department"]
+	myPhotoUrl, _ := params["photourl"]
 	newUser := Users{
-		UserName: myUserName,
-		Password: myPassword,
+		ID:         int64(myID),
+		UserName:   myUserName,
+		Password:   myPassword,
+		FullName:   myFullName,
+		Department: myDepartment,
+		PhotoURl:   myPhotoUrl,
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newUser)
 
@@ -112,11 +128,11 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	var collection = ConnectDB("users")
 	var params = mux.Vars(r)
 
 	//Get id from parameters
-	id, _ := primitive.ObjectIDFromHex(params["id"])
-	myUserName, _ := (params["username"])
+	id, _ := strconv.Atoi(params["id"])
 	myPassword, _ := (params["password"])
 	var user Users
 
@@ -125,7 +141,6 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	update := bson.D{
 		{"$set", bson.D{
-			{"username", myUserName},
 			{"password", myPassword},
 		}},
 	}
@@ -136,7 +151,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user.ID = id
+	user.ID = int64(id)
 
 	json.NewEncoder(w).Encode(user)
 
@@ -144,8 +159,10 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	var collection = ConnectDB("users")
 	var params = mux.Vars(r)
-	id, err := primitive.ObjectIDFromHex(params["id"])
+	id, err := strconv.Atoi(params["id"])
 	filter := bson.M{"_id": id}
 
 	deleteResult, err := collection.DeleteOne(context.TODO(), filter)
@@ -160,6 +177,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 func GetUserSearch2(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	var collection = ConnectDB("users")
 	var user Users
 	var params = mux.Vars(r)
 
