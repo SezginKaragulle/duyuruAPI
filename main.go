@@ -20,6 +20,11 @@ func main() {
 	r.HandleFunc("/api/users/update/{id}&{password}", modals.UpdateUser).Methods("PUT")
 	r.HandleFunc("/api/users/delete/{id}", modals.DeleteUser).Methods("DELETE")
 	r.HandleFunc("/api/users/searchUserPass/{username}&{password}", modals.GetUserSearch2).Methods("GET")
+
+	//Groups Collection
+
+	r.HandleFunc("/api/groups/", modals.GetGroups).Methods("GET")
+	r.HandleFunc("/api/groups/create/{id}&{createrID}&{name}&{memberID}&{userID}&{groupID}", modals.CreateGroup).Methods("POST")
 	
 	
 
