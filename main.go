@@ -25,7 +25,12 @@ func main() {
 
 	r.HandleFunc("/api/groups/", modals.GetGroups).Methods("GET")
 	r.HandleFunc("/api/groups/create/{id}&{createrID}&{name}&{memberID}&{userID}&{groupID}", modals.CreateGroup).Methods("POST")
-	
+	r.HandleFunc("/api/groups/delete/{id}", modals.DeleteGroups).Methods("DELETE")
+    
+	//Test Addresses
+
+	r.HandleFunc("/api/groups/createTwo/{id}&{createrID}&{name}&{memberID}&{userID}&{groupID}", modals.CreateGroup2).Methods("POST")
+    r.HandleFunc("/api/groups2/", modals.GetGroups2).Methods("GET")
 	
 
 
