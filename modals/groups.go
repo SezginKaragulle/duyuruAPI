@@ -34,7 +34,6 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	myID, _ := strconv.Atoi(params["id"])
 	myCreaterID, _ := strconv.Atoi(params["createrID"])
 	myName, _ := params["name"]
-    
 
 	//For GroupMembers
 	myGroupMemberID, _ := strconv.Atoi(params["memberID"])
@@ -110,4 +109,23 @@ func DeleteGroups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(deleteResult)
+}
+
+func GetGroupSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var collection = ConnectDB("groups")
+	var group Groups
+	var params = mux.Vars(r)
+
+	myID, _ := strconv.Atoi(params["id"])
+
+	filter := bson.M{"_id": myID}
+	err := collection.FindOne(context.TODO(), filter).Decode(&group)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(group)
 }
