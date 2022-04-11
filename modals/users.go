@@ -170,4 +170,5 @@ func GetUserSearch2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(user)
+
 }

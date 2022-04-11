@@ -15,7 +15,7 @@ type Groups struct {
 	ID           int64         `json:"_id,omitempty" bson:"_id,omitempty"`
 	CreaterID    int64         `json:"createrID,omitempty" bson:"createrID,omitempty"`
 	Name         string        `json:"name" bson:"name,omitempty"`
-	GroupMembers *GroupMembers `json:"groupMembers" bson:"groupMembers,omitempty"`
+	GroupMembers []string      `json:"groupMembers" bson:"groupMembers,omitempty"`
 }
 
 type GroupMembers struct {
@@ -34,23 +34,15 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	myID, _ := strconv.Atoi(params["id"])
 	myCreaterID, _ := strconv.Atoi(params["createrID"])
 	myName, _ := params["name"]
-
-	//For GroupMembers
-	myGroupMemberID, _ := strconv.Atoi(params["memberID"])
 	myUserIDSlices := []string{params["userID"]}
-	myGroupID, _ := strconv.Atoi(params["groupID"])
+	
 
-	newMyGroupMembers := GroupMembers{
-		ID:      int64(myGroupMemberID),
-		UserID:  myUserIDSlices,
-		GroupID: int64(myGroupID),
-	}
 
 	newGroups := Groups{
 		ID:           int64(myID),
 		CreaterID:    int64(myCreaterID),
 		Name:         myName,
-		GroupMembers: &newMyGroupMembers,
+		GroupMembers: myUserIDSlices,
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newGroups)
 
@@ -111,6 +103,39 @@ func DeleteGroups(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(deleteResult)
 }
 
+func AddMembersToGroup(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var collection = ConnectDB("groups")
+	var params = mux.Vars(r)
+
+	//Get id from parameters
+	id, _ := strconv.Atoi(params["id"])
+	myUserIDSlices := []string{params["userID"]}
+	var user Users
+
+	filter := bson.M{"_id": id}
+	_ = json.NewDecoder(r.Body).Decode(&user)
+
+	update := bson.D{
+		{"$set", bson.D{
+			{"groupMembers", myUserIDSlices},
+		}},
+	}
+
+	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	user.ID = int64(id)
+
+	json.NewEncoder(w).Encode(user)
+
+}
+
 func GetGroupSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -128,4 +153,36 @@ func GetGroupSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(group)
+}
+
+func GetGroupMemberSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var collection = ConnectDB("groups")
+	var myGroups []Groups
+	var params = mux.Vars(r)
+	myUserIDSlices := []string{params["userID"]}
+	cur, err := collection.Find(context.TODO(), bson.M{"groupMembers": bson.M{"$in": myUserIDSlices}})
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+
+		var myGroup Groups
+		err := cur.Decode(&myGroup)
+		if err != nil {
+			log.Fatal(err)
+		}
+		myGroups = append(myGroups, myGroup)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	json.NewEncoder(w).Encode(myGroups)
 }
