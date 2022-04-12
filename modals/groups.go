@@ -6,16 +6,17 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Groups struct {
-	ID           int64         `json:"_id,omitempty" bson:"_id,omitempty"`
-	CreaterID    int64         `json:"createrID,omitempty" bson:"createrID,omitempty"`
-	Name         string        `json:"name" bson:"name,omitempty"`
-	GroupMembers []string      `json:"groupMembers" bson:"groupMembers,omitempty"`
+	ID           int64    `json:"_id,omitempty" bson:"_id,omitempty"`
+	CreaterID    int64    `json:"createrID,omitempty" bson:"createrID,omitempty"`
+	Name         string   `json:"name" bson:"name,omitempty"`
+	GroupMembers []string `json:"groupMembers" bson:"groupMembers,omitempty"`
 }
 
 type GroupMembers struct {
@@ -34,9 +35,9 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	myID, _ := strconv.Atoi(params["id"])
 	myCreaterID, _ := strconv.Atoi(params["createrID"])
 	myName, _ := params["name"]
-	myUserIDSlices := []string{params["userID"]}
-	
-
+	myUserIDSlices := []string{}
+	paramUserID := strings.Split(params["userID"], ",")
+	myUserIDSlices = append(myUserIDSlices, paramUserID...)
 
 	newGroups := Groups{
 		ID:           int64(myID),
@@ -103,17 +104,20 @@ func DeleteGroups(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(deleteResult)
 }
 
-func AddMembersToGroup(w http.ResponseWriter, r *http.Request) {
+func ArrangeMembersOfGroup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
 	var collection = ConnectDB("groups")
 	var params = mux.Vars(r)
+	var user Users
 
 	//Get id from parameters
 	id, _ := strconv.Atoi(params["id"])
-	myUserIDSlices := []string{params["userID"]}
-	var user Users
+	myUserIDSlices := []string{}
+	paramUserID := strings.Split(params["userID"], ",")
+	myUserIDSlices = append(myUserIDSlices, paramUserID...)
+	
 
 	filter := bson.M{"_id": id}
 	_ = json.NewDecoder(r.Body).Decode(&user)
