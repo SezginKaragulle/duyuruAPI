@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,6 +20,7 @@ type Users struct {
 	FullName   string `json:"fullname" bson:"fullname,omitempty"`
 	Department string `json:"department" bson:"department,omitempty"`
 	PhotoURl   string `json:"photourl" bson:"photourl,omitempty"`
+	Bookmarks  []int  `json:"bookmarks" bson:"bookmarks,omitempty"`
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +85,8 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	myFullName, _ := params["fullname"]
 	myDepartment, _ := params["department"]
 	myPhotoUrl, _ := params["photourl"]
+	myBookmarks := []int{}
+
 	newUser := Users{
 		ID:         int64(myID),
 		UserName:   myUserName,
@@ -90,6 +94,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		FullName:   myFullName,
 		Department: myDepartment,
 		PhotoURl:   myPhotoUrl,
+		Bookmarks:  myBookmarks,
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newUser)
 
@@ -168,6 +173,46 @@ func GetUserSearch2(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 		return
 	}
+
+	json.NewEncoder(w).Encode(user)
+
+}
+
+func AddBookmarks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var collection = ConnectDB("users")
+	var params = mux.Vars(r)
+
+	myBookmarkIDSlices := []int{}
+	paramUserID := strings.Split(params["bookmarkID"], ",")
+	for _, myBookmarkID := range paramUserID {
+
+		myBookmarks,_:=strconv.Atoi(myBookmarkID)
+		myBookmarkIDSlices = append(myBookmarkIDSlices,myBookmarks)
+	}
+	
+	
+	id, _ := strconv.Atoi(params["id"])
+	
+	var user Users
+
+	filter := bson.M{"_id": id}
+	_ = json.NewDecoder(r.Body).Decode(&user)
+
+	update := bson.D{
+		{"$set", bson.D{
+			{"bookmarks", myBookmarkIDSlices},
+		}},
+	}
+
+	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	user.ID = int64(id)
 
 	json.NewEncoder(w).Encode(user)
 

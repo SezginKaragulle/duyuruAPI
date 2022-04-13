@@ -13,16 +13,10 @@ import (
 )
 
 type Groups struct {
-	ID           int64    `json:"_id,omitempty" bson:"_id,omitempty"`
-	CreaterID    int64    `json:"createrID,omitempty" bson:"createrID,omitempty"`
-	Name         string   `json:"name" bson:"name,omitempty"`
-	GroupMembers []string `json:"groupMembers" bson:"groupMembers,omitempty"`
-}
-
-type GroupMembers struct {
-	ID      int64    `json:"_id,omitempty" bson:"_id,omitempty"`
-	UserID  []string `json:"userID,omitempty" bson:"userID,omitempty"`
-	GroupID int64    `json:"groupID,omitempty" bson:"groupID,omitempty"`
+	ID           int64  `json:"_id,omitempty" bson:"_id,omitempty"`
+	CreaterID    int64  `json:"createrID,omitempty" bson:"createrID,omitempty"`
+	Name         string `json:"name" bson:"name,omitempty"`
+	GroupMembers []int  `json:"groupMembers" bson:"groupMembers,omitempty"`
 }
 
 func CreateGroup(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +25,16 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var collection = ConnectDB("groups")
 	var params = mux.Vars(r)
 
-	//For Groups
 	myID, _ := strconv.Atoi(params["id"])
 	myCreaterID, _ := strconv.Atoi(params["createrID"])
 	myName, _ := params["name"]
-	myUserIDSlices := []string{}
+	myUserIDSlices := []int{}
 	paramUserID := strings.Split(params["userID"], ",")
-	myUserIDSlices = append(myUserIDSlices, paramUserID...)
+	for _, myUserID := range paramUserID {
+
+		myUsers, _ := strconv.Atoi(myUserID)
+		myUserIDSlices = append(myUserIDSlices, myUsers)
+	}
 
 	newGroups := Groups{
 		ID:           int64(myID),
@@ -112,12 +109,15 @@ func ArrangeMembersOfGroup(w http.ResponseWriter, r *http.Request) {
 	var params = mux.Vars(r)
 	var user Users
 
-	//Get id from parameters
+
 	id, _ := strconv.Atoi(params["id"])
-	myUserIDSlices := []string{}
+	myUserIDSlices := []int{}
 	paramUserID := strings.Split(params["userID"], ",")
-	myUserIDSlices = append(myUserIDSlices, paramUserID...)
-	
+	for _, myUserID := range paramUserID {
+
+		myUserIDList, _ := strconv.Atoi(myUserID)
+		myUserIDSlices = append(myUserIDSlices, myUserIDList)
+	}
 
 	filter := bson.M{"_id": id}
 	_ = json.NewDecoder(r.Body).Decode(&user)
@@ -161,10 +161,17 @@ func GetGroupSearch(w http.ResponseWriter, r *http.Request) {
 
 func GetGroupMemberSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	var collection = ConnectDB("groups")
 	var myGroups []Groups
 	var params = mux.Vars(r)
-	myUserIDSlices := []string{params["userID"]}
+	myUserIDSlices := []int{}
+	paramUserID := strings.Split(params["userID"], ",")
+	for _, myUserID := range paramUserID {
+
+		myUserIDList, _ := strconv.Atoi(myUserID)
+		myUserIDSlices = append(myUserIDSlices, myUserIDList)
+	}
 	cur, err := collection.Find(context.TODO(), bson.M{"groupMembers": bson.M{"$in": myUserIDSlices}})
 
 	if err != nil {

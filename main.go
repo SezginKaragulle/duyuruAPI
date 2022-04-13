@@ -20,6 +20,7 @@ func main() {
 	r.HandleFunc("/api/users/update/{id}&{password}", modals.UpdateUser).Methods("PUT")
 	r.HandleFunc("/api/users/delete/{id}", modals.DeleteUser).Methods("DELETE")
 	r.HandleFunc("/api/users/searchUserPass/{username}&{password}", modals.GetUserSearch2).Methods("GET")
+	r.HandleFunc("/api/users/bookmarkAdd/{id}&{bookmarkID}", modals.AddBookmarks).Methods("PUT")
 
 	//Groups Collection
 
@@ -30,8 +31,12 @@ func main() {
 	r.HandleFunc("/api/groups/searchGroup/{id}", modals.GetGroupSearch).Methods("GET")
 	r.HandleFunc("/api/groups/searchGroupMember/{userID}", modals.GetGroupMemberSearch).Methods("GET")
 
-	
-	
+	//Posts Collections
+
+	r.HandleFunc("/api/posts/", modals.GetPosts).Methods("GET")
+	r.HandleFunc("/api/posts/create/{id}&{authorID}&{topic}&{content}&{receivers}", modals.CreatePost).Methods("POST")
+	r.HandleFunc("/api/posts/postReceivers/{receivers}", modals.GetPostReceivers).Methods("GET")
+	r.HandleFunc("/api/posts/arrangeSeenUsers/{id}&{seenUsers}", modals.ArrangeSeenUsersOfPosts).Methods("PUT")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 
