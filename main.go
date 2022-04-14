@@ -37,6 +37,7 @@ func main() {
 	r.HandleFunc("/api/posts/create/{id}&{authorID}&{topic}&{content}&{receivers}", modals.CreatePost).Methods("POST")
 	r.HandleFunc("/api/posts/postReceivers/{receivers}", modals.GetPostReceivers).Methods("GET")
 	r.HandleFunc("/api/posts/arrangeSeenUsers/{id}&{seenUsers}", modals.ArrangeSeenUsersOfPosts).Methods("PUT")
+	r.HandleFunc("/api/posts/delete/{id}", modals.DeletePosts).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 

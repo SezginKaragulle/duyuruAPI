@@ -23,12 +23,13 @@ type Posts struct {
 	Seen_Users   []int  `json:"seenUsers" bson:"seenUsers,omitempty"`
 }
 
+var collection_Posts = ConnectDB("posts")
+
 func CreatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("posts")
+	
 	var params = mux.Vars(r)
-
 	myID, _ := strconv.Atoi(params["id"])
 	myAuthorID, _ := strconv.Atoi(params["authorID"])
 	myTopic, _ := params["topic"]
@@ -53,9 +54,10 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		Receivers:    myReceivers,
 		Seen_Users:   mySeenUsers,
 	}
+	
 	_ = json.NewDecoder(r.Body).Decode(&newPosts)
 
-	result, err := collection.InsertOne(context.TODO(), newPosts)
+	result, err := collection_Posts.InsertOne(context.TODO(), newPosts)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -66,10 +68,9 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 
 func GetPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var collection = ConnectDB("posts")
+	
 	var myPosts []Posts
-
-	cur, err := collection.Find(context.TODO(), bson.M{})
+	cur, err := collection_Posts.Find(context.TODO(), bson.M{})
 
 	if err != nil {
 		log.Fatal(err)
@@ -98,17 +99,19 @@ func GetPosts(w http.ResponseWriter, r *http.Request) {
 func GetPostReceivers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("posts")
+	
 	var myPosts []Posts
 	var params = mux.Vars(r)
 	myReceivers := []int{}
 	paramReceiversID := strings.Split(params["receivers"], ",")
+
 	for _, myReceiverID := range paramReceiversID {
 
 		myReceiver, _ := strconv.Atoi(myReceiverID)
 		myReceivers = append(myReceivers, myReceiver)
 	}
-	cur, err := collection.Find(context.TODO(), bson.M{"receivers": bson.M{"$in": myReceivers}})
+
+	cur, err := collection_Posts.Find(context.TODO(), bson.M{"receivers": bson.M{"$in": myReceivers}})
 
 	if err != nil {
 		log.Fatal(err)
@@ -138,14 +141,13 @@ func ArrangeSeenUsersOfPosts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("posts")
+	
 	var params = mux.Vars(r)
 	var post Posts
-
-
 	id, _ := strconv.Atoi(params["id"])
 	mySeenUsers := []int{}
 	paramSeenUserID := strings.Split(params["seenUsers"], ",")
+
 	for _, mySeenUser := range paramSeenUserID {
 
 		mySeenUsersList, _ := strconv.Atoi(mySeenUser)
@@ -161,7 +163,8 @@ func ArrangeSeenUsersOfPosts(w http.ResponseWriter, r *http.Request) {
 		}},
 	}
 
-	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&post)
+	err := collection_Posts.FindOneAndUpdate(context.TODO(), filter, update).Decode(&post)
+
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -170,4 +173,21 @@ func ArrangeSeenUsersOfPosts(w http.ResponseWriter, r *http.Request) {
 	post.ID = int64(id)
 
 	json.NewEncoder(w).Encode(post)
+}
+
+func DeletePosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	
+	var params = mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+	filter := bson.M{"_id": id}
+	deleteResult, err := collection_Posts.DeleteOne(context.TODO(), filter)
+	
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(deleteResult)
 }

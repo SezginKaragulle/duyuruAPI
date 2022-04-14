@@ -19,10 +19,12 @@ type Groups struct {
 	GroupMembers []int  `json:"groupMembers" bson:"groupMembers,omitempty"`
 }
 
+var collection_Groups = ConnectDB("groups")
+
 func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("groups")
+	
 	var params = mux.Vars(r)
 
 	myID, _ := strconv.Atoi(params["id"])
@@ -30,6 +32,7 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	myName, _ := params["name"]
 	myUserIDSlices := []int{}
 	paramUserID := strings.Split(params["userID"], ",")
+
 	for _, myUserID := range paramUserID {
 
 		myUsers, _ := strconv.Atoi(myUserID)
@@ -44,7 +47,7 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newGroups)
 
-	result, err := collection.InsertOne(context.TODO(), newGroups)
+	result, err := collection_Groups.InsertOne(context.TODO(), newGroups)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -55,10 +58,9 @@ func CreateGroup(w http.ResponseWriter, r *http.Request) {
 
 func GetGroups(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var collection = ConnectDB("groups")
+	
 	var myGroups []Groups
-
-	cur, err := collection.Find(context.TODO(), bson.M{})
+	cur, err := collection_Groups.Find(context.TODO(), bson.M{})
 
 	if err != nil {
 		log.Fatal(err)
@@ -87,12 +89,12 @@ func GetGroups(w http.ResponseWriter, r *http.Request) {
 func DeleteGroups(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("groups")
+	
 	var params = mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
 	filter := bson.M{"_id": id}
+	deleteResult, err := collection_Groups.DeleteOne(context.TODO(), filter)
 
-	deleteResult, err := collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -105,14 +107,13 @@ func ArrangeMembersOfGroup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("groups")
+	
 	var params = mux.Vars(r)
 	var user Users
-
-
 	id, _ := strconv.Atoi(params["id"])
 	myUserIDSlices := []int{}
 	paramUserID := strings.Split(params["userID"], ",")
+
 	for _, myUserID := range paramUserID {
 
 		myUserIDList, _ := strconv.Atoi(myUserID)
@@ -128,7 +129,7 @@ func ArrangeMembersOfGroup(w http.ResponseWriter, r *http.Request) {
 		}},
 	}
 
-	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	err := collection_Groups.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -142,37 +143,52 @@ func ArrangeMembersOfGroup(w http.ResponseWriter, r *http.Request) {
 
 func GetGroupSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	var collection = ConnectDB("groups")
-	var group Groups
+	
+	var myGroups []Groups
 	var params = mux.Vars(r)
-
 	myID, _ := strconv.Atoi(params["id"])
+	cur, err := collection_Groups.Find(context.TODO(), bson.M{"_id": myID})
 
-	filter := bson.M{"_id": myID}
-	err := collection.FindOne(context.TODO(), filter).Decode(&group)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(group)
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+
+		var myGroup Groups
+		err := cur.Decode(&myGroup)
+		if err != nil {
+			log.Fatal(err)
+		}
+		myGroups = append(myGroups, myGroup)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	json.NewEncoder(w).Encode(myGroups)
 }
 
 func GetGroupMemberSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("groups")
+	
 	var myGroups []Groups
 	var params = mux.Vars(r)
 	myUserIDSlices := []int{}
 	paramUserID := strings.Split(params["userID"], ",")
+
 	for _, myUserID := range paramUserID {
 
 		myUserIDList, _ := strconv.Atoi(myUserID)
 		myUserIDSlices = append(myUserIDSlices, myUserIDList)
 	}
-	cur, err := collection.Find(context.TODO(), bson.M{"groupMembers": bson.M{"$in": myUserIDSlices}})
+	
+	cur, err := collection_Groups.Find(context.TODO(), bson.M{"groupMembers": bson.M{"$in": myUserIDSlices}})
 
 	if err != nil {
 		log.Fatal(err)

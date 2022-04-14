@@ -10,7 +10,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Users struct {
@@ -23,12 +22,48 @@ type Users struct {
 	Bookmarks  []int  `json:"bookmarks" bson:"bookmarks,omitempty"`
 }
 
+var collection_Users = ConnectDB("users")
+
 func GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var collection = ConnectDB("users")
-	var myUsers []Users
 
-	cur, err := collection.Find(context.TODO(), bson.M{})
+	
+	var myUsers []Users
+	cur, err := collection_Users.Find(context.TODO(), bson.M{})
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+
+		var myUser Users
+		err := cur.Decode(&myUser)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		myUsers = append(myUsers, myUser)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	json.NewEncoder(w).Encode(myUsers)
+}
+
+func GetUserSearch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	
+	var myUsers []Users
+	var params = mux.Vars(r)
+	myID, _ := strconv.Atoi(params["id"])
+	cur, err := collection_Users.Find(context.TODO(), bson.M{"_id": myID})
 
 	if err != nil {
 		log.Fatal(err)
@@ -54,29 +89,10 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(myUsers)
 }
 
-func GetUserSearch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var collection = ConnectDB("users")
-	var user Users
-	var params = mux.Vars(r)
-
-	myID, _ := primitive.ObjectIDFromHex(params["id"])
-
-	filter := bson.M{"_id": myID}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	json.NewEncoder(w).Encode(user)
-}
-
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("users")
+	
 	var params = mux.Vars(r)
 
 	myID, _ := strconv.Atoi(params["id"])
@@ -86,7 +102,6 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	myDepartment, _ := params["department"]
 	myPhotoUrl, _ := params["photourl"]
 	myBookmarks := []int{}
-
 	newUser := Users{
 		ID:         int64(myID),
 		UserName:   myUserName,
@@ -98,7 +113,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&newUser)
 
-	result, err := collection.InsertOne(context.TODO(), newUser)
+	result, err := collection_Users.InsertOne(context.TODO(), newUser)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -111,7 +126,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("users")
+	
 	var params = mux.Vars(r)
 
 	//Get id from parameters
@@ -128,7 +143,7 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		}},
 	}
 
-	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	err := collection_Users.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -143,12 +158,12 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("users")
+	
 	var params = mux.Vars(r)
 	id, err := strconv.Atoi(params["id"])
 	filter := bson.M{"_id": id}
+	deleteResult, err := collection_Users.DeleteOne(context.TODO(), filter)
 
-	deleteResult, err := collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -159,42 +174,55 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 func GetUserSearch2(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	var collection = ConnectDB("users")
-	var user Users
+	
+	var myUsers []Users
 	var params = mux.Vars(r)
-
 	myUserName, _ := params["username"]
 	myPassword, _ := params["password"]
 
-	filter := bson.M{"username": myUserName, "password": myPassword}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
+	cur, err := collection_Users.Find(context.TODO(), bson.M{"username": myUserName,"password": myPassword})
+
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(user)
+	defer cur.Close(context.TODO())
+
+	for cur.Next(context.TODO()) {
+
+		var myUser Users
+		err := cur.Decode(&myUser)
+		if err != nil {
+			log.Fatal(err)
+		}
+		myUsers = append(myUsers, myUser)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	json.NewEncoder(w).Encode(myUsers)
 
 }
 
 func AddBookmarks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var collection = ConnectDB("users")
+	
 	var params = mux.Vars(r)
 
 	myBookmarkIDSlices := []int{}
 	paramUserID := strings.Split(params["bookmarkID"], ",")
 	for _, myBookmarkID := range paramUserID {
 
-		myBookmarks,_:=strconv.Atoi(myBookmarkID)
-		myBookmarkIDSlices = append(myBookmarkIDSlices,myBookmarks)
+		myBookmarks, _ := strconv.Atoi(myBookmarkID)
+		myBookmarkIDSlices = append(myBookmarkIDSlices, myBookmarks)
 	}
-	
-	
+
 	id, _ := strconv.Atoi(params["id"])
-	
+
 	var user Users
 
 	filter := bson.M{"_id": id}
@@ -206,7 +234,7 @@ func AddBookmarks(w http.ResponseWriter, r *http.Request) {
 		}},
 	}
 
-	err := collection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
+	err := collection_Users.FindOneAndUpdate(context.TODO(), filter, update).Decode(&user)
 	if err != nil {
 		log.Fatal(err)
 		return

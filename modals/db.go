@@ -2,7 +2,6 @@ package modals
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,8 +19,6 @@ func ConnectDB(collection_name string) *mongo.Collection {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println("Connected to MongoDB!")
 
 	collection := client.Database("duyuruDB").Collection(collection_name)
 
